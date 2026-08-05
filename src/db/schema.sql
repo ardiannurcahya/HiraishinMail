@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS inboxes (
   address TEXT PRIMARY KEY,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -12,16 +12,15 @@ CREATE TABLE IF NOT EXISTS messages (
   from_address TEXT NOT NULL,
   subject TEXT DEFAULT '(no subject)',
   body TEXT DEFAULT '',
-  received_at TEXT NOT NULL DEFAULT (datetime('now')),
+  received_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   FOREIGN KEY (inbox_address) REFERENCES inboxes(address)
 );
 
-CREATE INDEX IF NOT EXISTS idx_messages_inbox ON messages(inbox_address);
 CREATE INDEX IF NOT EXISTS idx_messages_received ON messages(inbox_address, received_at DESC);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE TABLE IF NOT EXISTS session_inboxes (
@@ -31,5 +30,3 @@ CREATE TABLE IF NOT EXISTS session_inboxes (
   FOREIGN KEY (session_id) REFERENCES sessions(id),
   FOREIGN KEY (inbox_address) REFERENCES inboxes(address)
 );
-
-CREATE INDEX IF NOT EXISTS idx_session_inboxes_session ON session_inboxes(session_id);

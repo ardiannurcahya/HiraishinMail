@@ -19,15 +19,15 @@ export default {
    * HTTP fetch handler - serves API routes.
    * Static files (src/web/) are served via Cloudflare [assets].
    */
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     // Route /api/* to Hono router (strip /api prefix)
-    if (url.pathname.startsWith('/api/')) {
+    if (url.pathname.startsWith('/api')) {
       const apiUrl = new URL(request.url);
-      apiUrl.pathname = url.pathname.slice(4); // strip '/api'
+      apiUrl.pathname = url.pathname.replace(/^\/api/, '') || '/';
       const apiRequest = new Request(apiUrl, request);
-      return api.fetch(apiRequest, env, ctx);
+      return api.fetch(apiRequest, env, _ctx);
     }
 
     // Fallback: should not happen when [assets] is configured properly

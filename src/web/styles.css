@@ -624,6 +624,48 @@ input, select, textarea {
   border-color: var(--text-muted);
 }
 
+.btn-danger {
+  background: var(--danger);
+  color: var(--on-accent);
+}
+
+.btn-danger:hover {
+  background: #f6a19a;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   Confirmation dialog (native <dialog>)
+   ============================================================ */
+.confirm-dialog {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+  width: min(380px, calc(100vw - 32px));
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.confirm-title {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.confirm-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  word-break: break-word;
+  margin-bottom: 18px;
+}
+
 /* ============================================================
    Content toolbar
    ============================================================ */

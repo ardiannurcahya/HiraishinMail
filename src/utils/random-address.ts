@@ -51,19 +51,14 @@ function randomLocalPart(): string {
 
 export async function generateUniqueAddress(
   exists: (addr: string) => Promise<boolean>,
-  domain: string
+  domain: string,
+  maxAttempts: number = 20
 ): Promise<string> {
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < maxAttempts; i++) {
     const address = `${randomLocalPart()}@${domain}`;
     if (!(await exists(address))) {
       return address;
     }
-  }
-
-  // Fallback: add timestamp suffix for uniqueness
-  const fallback = `${randomLocalPart()}${Date.now().toString().slice(-4)}@${domain}`;
-  if (!(await exists(fallback))) {
-    return fallback;
   }
 
   throw new Error('Failed to generate unique inbox address');

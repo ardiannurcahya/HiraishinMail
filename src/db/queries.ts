@@ -19,14 +19,29 @@ export interface Session {
   created_at: string;
 }
 
+export interface NewMessage {
+  inboxAddress: string;
+  fromAddress: string;
+  subject: string;
+  body: string;
+}
+
 // ---- Inboxes ----
 
 export async function getInbox(db: D1Database, address: string): Promise<Inbox | null> {
   return db.prepare('SELECT * FROM inboxes WHERE address = ?').bind(address).first<Inbox>();
 }
 
-export async function createInbox(db: D1Database, address: string): Promise<void> {
-  await db.prepare('INSERT OR IGNORE INTO inboxes (address) VALUES (?)').bind(address).run();
+/**
+ * Creates an inbox if it doesn't exist (INSERT OR IGNORE).
+ * @returns true if the row was newly created, false if it already existed.
+ */
+export async function createInbox(db: D1Database, address: string): Promise<boolean> {
+  const result = await db
+    .prepare('INSERT OR IGNORE INTO inboxes (address) VALUES (?)')
+    .bind(address)
+    .run();
+  return result.meta.changes > 0;
 }
 
 export async function inboxExists(db: D1Database, address: string): Promise<boolean> {
@@ -49,38 +64,46 @@ export async function getSessionInboxes(db: D1Database, sessionId: string): Prom
 
 // ---- Messages ----
 
-export async function getMessages(db: D1Database, inboxAddress: string): Promise<Message[]> {
-  return db
+export async function getMessages(
+  db: D1Database,
+  inboxAddress: string,
+  limit: number = 100
+): Promise<Message[]> {
+  const { results } = await db
     .prepare(
-      'SELECT * FROM messages WHERE inbox_address = ? ORDER BY received_at DESC'
+      `SELECT * FROM messages
+       WHERE inbox_address = ?
+       ORDER BY received_at DESC
+       LIMIT ?`
     )
-    .bind(inboxAddress)
-    .all<Message>()
-    .then((r) => r.results);
+    .bind(inboxAddress, limit)
+    .all<Message>();
+  return results ?? [];
 }
 
-export async function insertMessage(
-  db: D1Database,
-  msg: Omit<Message, 'received_at'>
-): Promise<void> {
+export async function insertMessage(db: D1Database, msg: NewMessage): Promise<void> {
+  const id = `msg_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
   await db
     .prepare(
       `INSERT INTO messages (id, inbox_address, from_address, subject, body)
        VALUES (?, ?, ?, ?, ?)`
     )
-    .bind(msg.id, msg.inbox_address, msg.from_address, msg.subject, msg.body)
+    .bind(id, msg.inboxAddress, msg.fromAddress, msg.subject, msg.body)
     .run();
+}
+
+export async function deleteMessagesByInbox(db: D1Database, address: string): Promise<void> {
+  await db.prepare('DELETE FROM messages WHERE inbox_address = ?').bind(address).run();
+}
+
+export async function deleteInbox(db: D1Database, address: string): Promise<void> {
+  await db.prepare('DELETE FROM inboxes WHERE address = ?').bind(address).run();
 }
 
 // ---- Sessions ----
 
 export async function ensureSession(db: D1Database, sessionId: string): Promise<void> {
   await db.prepare('INSERT OR IGNORE INTO sessions (id) VALUES (?)').bind(sessionId).run();
-}
-
-export async function sessionExists(db: D1Database, sessionId: string): Promise<boolean> {
-  const row = await db.prepare('SELECT 1 FROM sessions WHERE id = ? LIMIT 1').bind(sessionId).first();
-  return !!row;
 }
 
 // ---- Session-Inbox links ----
