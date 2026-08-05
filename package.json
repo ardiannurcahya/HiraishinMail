@@ -6,8 +6,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create hiraishinmail-db",
-    "db:migrate": "wrangler d1 execute hiraishinmail-db --file=src/db/schema.sql",
-    "db:local": "wrangler d1 execute hiraishinmail-db --local --file=src/db/schema.sql"
+    "db:migrate": "wrangler d1 execute hiraishinmail-db --remote --file=src/db/schema.sql",
+    "db:migrate:local": "wrangler d1 execute hiraishinmail-db --local --file=src/db/schema.sql"
   },
   "dependencies": {
     "hono": "^4.4.0",

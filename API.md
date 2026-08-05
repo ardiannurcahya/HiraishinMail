@@ -1,58 +1,47 @@
-# HiraishinMail API
+# API Reference
 
-HiraishinMail exposes a REST API for session management, inbox operations, and message retrieval. All endpoints live under `/api/`.
+All endpoints are served under `/api/`.
 
-**Base URL:** `https://YOUR_DOMAIN/api/`
-
----
+**Base URL:** `https://<WEB_HOST>/api/`
 
 ## Authentication
 
-HiraishinMail uses **anonymous session tokens** — no login required.
+HiraishinMail uses anonymous session tokens. No login required.
 
-1. Call `GET /api/session` to obtain a `sessionId`
+1. `GET /api/session` → returns a `sessionId`
 2. Pass `x-session-id` header on all subsequent requests
-3. Inboxes are scoped to the session: Browser A cannot see Browser B's inboxes
+3. Inboxes are scoped to the session — Browser A cannot see Browser B's inboxes
 
 ---
 
 ## Endpoints
 
-### GET `/api/config`
+### `GET /api/config`
 
-Returns the public app configuration.
-
-**Headers:** none
+Returns public app configuration. No authentication required.
 
 **Response** `200 OK`
 
 ```json
 {
   "appName": "HiraishinMail",
-  "mailDomain": "YOURDOMAIN.com",
-  "mailDomains": ["YOURDOMAIN.com", "mail.YOURDOMAIN.com"],
-  "webHost": "hiraishinmail.YOURDOMAIN.com"
+  "mailDomain": "yourdomain.com",
+  "mailDomains": ["yourdomain.com", "mail.yourdomain.com"],
+  "webHost": "mail.yourdomain.com"
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `appName` | string | App display name |
-| `mailDomain` | string | Default mail domain (first in the list, for backward compat) |
-| `mailDomains` | string[] | All available mail domains |
-| `webHost` | string | Web frontend hostname |
-
 ---
 
-### GET `/api/session`
+### `GET /api/session`
 
-Creates or retrieves an anonymous browser session. If you pass an existing `x-session-id`, it returns the same ID. If you don't, it generates a new one.
+Creates or retrieves a browser session.
 
 **Headers**
 
 | Header | Required | Description |
-|---|---|---|
-| `x-session-id` | No | Existing session ID (UUID v4). Omit to create a new session. |
+|--------|----------|-------------|
+| `x-session-id` | No | Existing session ID. Omit to create a new one. |
 
 **Response** `200 OK`
 
@@ -62,35 +51,24 @@ Creates or retrieves an anonymous browser session. If you pass an existing `x-se
 }
 ```
 
-**Usage**
-
-```bash
-# Create a new session
-curl -s https://YOUR_DOMAIN/api/session
-
-# Reuse an existing session
-curl -s https://YOUR_DOMAIN/api/session \
-  -H "x-session-id: 550e8400-e29b-41d4-a716-446655440000"
-```
-
 ---
 
-### GET `/api/inboxes`
+### `GET /api/inboxes`
 
 Lists all inboxes linked to your session.
 
 **Headers**
 
 | Header | Required | Description |
-|---|---|---|
-| `x-session-id` | **Yes** | Session ID from `/api/session` |
+|--------|----------|-------------|
+| `x-session-id` | **Yes** | Session ID |
 
 **Response** `200 OK`
 
 ```json
 [
   {
-    "address": "kopihujan23@YOURDOMAIN.com",
+    "address": "kopihujan23@yourdomain.com",
     "created_at": "2026-06-26 07:48:19"
   }
 ]
@@ -98,115 +76,95 @@ Lists all inboxes linked to your session.
 
 **Errors**
 
-| Status | Message | Meaning |
-|---|---|---|
-| `400` | `Missing x-session-id` | No session header provided |
-
-**Usage**
-
-```bash
-curl -s https://YOUR_DOMAIN/api/inboxes \
-  -H "x-session-id: 550e8400-e29b-41d4-a716-446655440000"
-```
+| Status | Message |
+|--------|---------|
+| `400` | `Missing x-session-id` |
 
 ---
 
-### POST `/api/inboxes`
+### `POST /api/inboxes`
 
 Creates a new inbox (or claims an existing one) and links it to your session.
+
+**Rate limit:** 10 requests per minute per IP.
 
 **Headers**
 
 | Header | Required | Description |
-|---|---|---|
+|--------|----------|-------------|
 | `x-session-id` | **Yes** | Session ID |
-| `Content-Type` | Yes | `application/json` |
+| `Content-Type` | **Yes** | `application/json` |
 
-**Request Body**
+**Body**
 
 | Field | Required | Description |
-|---|---|---|
-| `localPart` | No | Custom username (e.g. `"myname"`). Omit for a random address. |
-| `domain` | No | Domain override. Must be one of the allowed domains from `GET /api/config`'s `mailDomains`. Defaults to the first configured domain. Invalid domains are rejected with `400`. |
+|-------|----------|-------------|
+| `localPart` | No | Custom username (e.g. `"myname"`). Omit for random. |
+| `domain` | No | Domain override from `mailDomains`. Defaults to first domain. |
 
 **Examples**
 
-```json
-// Custom address on default domain
-{ "localPart": "myinbox" }
-// → myinbox@YOURDOMAIN.com
+```bash
+# Custom address
+curl -s -X POST https://mail.yourdomain.com/api/inboxes \
+  -H "x-session-id: <session>" \
+  -H "Content-Type: application/json" \
+  -d '{"localPart": "myinbox"}'
 
-// Random address
-{}
-// → langitbiru23@YOURDOMAIN.com
+# Random address
+curl -s -X POST https://mail.yourdomain.com/api/inboxes \
+  -H "x-session-id: <session>" \
+  -H "Content-Type: application/json" \
+  -d '{}'
 
-// Custom address on specific domain
-{ "localPart": "test", "domain": "mail.YOURDOMAIN.com" }
-// → test@mail.YOURDOMAIN.com
-
-// Random on specific domain
-{ "domain": "mail.YOURDOMAIN.com" }
-// → melatijaya87@mail.YOURDOMAIN.com
-
-// Invalid domain → 400
-{ "domain": "evil.com" }
-// → { "error": "Invalid domain: evil.com. Allowed: YOURDOMAIN.com, mail.YOURDOMAIN.com" }
+# Random on specific domain
+curl -s -X POST https://mail.yourdomain.com/api/inboxes \
+  -H "x-session-id: <session>" \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "mail.yourdomain.com"}'
 ```
 
-**Response** `201 Created`
+**Response**
+
+| Status | Meaning |
+|--------|---------|
+| `201 Created` | New inbox created |
+| `200 OK` | Existing inbox claimed (linked to session) |
 
 ```json
 {
-  "address": "langitbiru23@YOURDOMAIN.com",
+  "address": "kopihujan42@yourdomain.com",
   "created_at": "2026-06-26 07:48:19"
 }
 ```
 
 **Errors**
 
-| Status | Message | Meaning |
-|---|---|---|
-| `400` | `Missing x-session-id` | No session header provided |
-| `400` | `Invalid domain: ...` | Requested domain is not in the allowed list. Check `GET /config`'s `mailDomains`. |
-
-**Notes**
-- If the address already exists, it simply links the existing inbox to your session
-- Random addresses are human-readable Indonesian-style (e.g. `kopihujan42`, `bulanbiru17`)
-- The generator checks the actual database for uniqueness — it never creates duplicates, even across different sessions
-
-**Usage**
-
-```bash
-# Create with custom name
-curl -s -X POST https://YOUR_DOMAIN/api/inboxes \
-  -H "x-session-id: 550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{"localPart":"myinbox"}'
-
-# Create random
-curl -s -X POST https://YOUR_DOMAIN/api/inboxes \
-  -H "x-session-id: 550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
+| Status | Message | Cause |
+|--------|---------|-------|
+| `400` | `Missing x-session-id` | No session header |
+| `400` | `Invalid domain: ...` | Domain not in `mailDomains` |
+| `400` | `Invalid local part: ...` | Characters outside `[a-z0-9._-]` |
+| `400` | `Local part too long` | Exceeds 64 characters |
+| `429` | `Rate limit exceeded` | More than 10 requests/min |
 
 ---
 
-### DELETE `/api/inboxes/:address`
+### `DELETE /api/inboxes/:address`
 
-Removes an inbox from your session. Does **not** delete the inbox or its messages from the database — it just unlinks it from your session so it no longer appears in your list.
+**Permanently deletes** an inbox, all its messages, and all session links. This action is irreversible.
 
 **Headers**
 
 | Header | Required | Description |
-|---|---|---|
+|--------|----------|-------------|
 | `x-session-id` | **Yes** | Session ID |
 
 **Path Parameters**
 
 | Param | Description |
-|---|---|
-| `address` | Full email address, URI-encoded. Example: `test123%40YOURDOMAIN.com` |
+|-------|-------------|
+| `address` | Full email address, URI-encoded (e.g. `test123%40yourdomain.com`) |
 
 **Response** `200 OK`
 
@@ -216,34 +174,27 @@ Removes an inbox from your session. Does **not** delete the inbox or its message
 
 **Errors**
 
-| Status | Message | Meaning |
-|---|---|---|
-| `400` | `Missing x-session-id` | No session header |
-
-**Usage**
-
-```bash
-curl -s -X DELETE "https://YOUR_DOMAIN/api/inboxes/test123%40YOURDOMAIN.com" \
-  -H "x-session-id: 550e8400-e29b-41d4-a716-446655440000"
-```
+| Status | Message |
+|--------|---------|
+| `400` | `Missing x-session-id` |
 
 ---
 
-### GET `/api/inboxes/:address/messages`
+### `GET /api/inboxes/:address/messages`
 
-Fetches all messages for a given inbox. The inbox must be linked to your session.
+Fetches all messages for an inbox. The inbox must be linked to your session.
 
 **Headers**
 
 | Header | Required | Description |
-|---|---|---|
+|--------|----------|-------------|
 | `x-session-id` | **Yes** | Session ID |
 
 **Path Parameters**
 
 | Param | Description |
-|---|---|
-| `address` | Full email address, URI-encoded. |
+|-------|-------------|
+| `address` | Full email address, URI-encoded |
 
 **Response** `200 OK`
 
@@ -251,7 +202,7 @@ Fetches all messages for a given inbox. The inbox must be linked to your session
 [
   {
     "id": "msg_1782461413912_0956a83c",
-    "inbox_address": "test123@YOURDOMAIN.com",
+    "inbox_address": "test123@yourdomain.com",
     "from_address": "someone@gmail.com",
     "subject": "Hello",
     "body": "This is the email body",
@@ -262,55 +213,16 @@ Fetches all messages for a given inbox. The inbox must be linked to your session
 
 **Errors**
 
-| Status | Message | Meaning |
-|---|---|---|
+| Status | Message | Cause |
+|--------|---------|-------|
 | `400` | `Missing x-session-id` | No session header |
-| `403` | `Inbox not in this session` | The inbox exists but is not linked to your session. Use `POST /api/inboxes` with the matching `localPart` to claim it first. |
-
-**Usage**
-
-```bash
-curl -s "https://YOUR_DOMAIN/api/inboxes/test123%40YOURDOMAIN.com/messages" \
-  -H "x-session-id: 550e8400-e29b-41d4-a716-446655440000"
-```
+| `403` | `Inbox not in this session` | Inbox exists but not linked to your session |
 
 ---
 
-## Full flow example
+## Error Format
 
-```bash
-DOMAIN="hiraishinmail.YOURDOMAIN.com"
-
-# 1. Get session
-SESSION=$(curl -s https://$DOMAIN/api/session | jq -r '.sessionId')
-
-# 2. Create an inbox
-INBOX=$(curl -s -X POST https://$DOMAIN/api/inboxes \
-  -H "x-session-id: $SESSION" \
-  -H "Content-Type: application/json" \
-  -d '{}' | jq -r '.address')
-echo "Created: $INBOX"
-
-# 3. ...wait for an email to arrive...
-
-# 4. List inboxes
-curl -s https://$DOMAIN/api/inboxes -H "x-session-id: $SESSION" | jq '.'
-
-# 5. Read messages
-ENCODED=$(echo -n "$INBOX" | jq -sRr '@uri')
-curl -s "https://$DOMAIN/api/inboxes/$ENCODED/messages" \
-  -H "x-session-id: $SESSION" | jq '.'
-
-# 6. Delete inbox from session
-curl -s -X DELETE "https://$DOMAIN/api/inboxes/$ENCODED" \
-  -H "x-session-id: $SESSION"
-```
-
----
-
-## Errors
-
-All error responses follow this format:
+All errors follow this format:
 
 ```json
 {
@@ -318,22 +230,38 @@ All error responses follow this format:
 }
 ```
 
-| Status | When |
-|---|---|
-| `400` | Missing `x-session-id` header, or invalid domain in POST `/api/inboxes` |
-| `403` | Unauthorized — inbox not linked to your session |
-| `404` | Route not found |
-
----
-
-## Session isolation
-
-HiraishinMail uses per-browser anonymous sessions:
+## Session Isolation
 
 | Scenario | Behavior |
-|---|---|
+|----------|----------|
 | New browser | Empty inbox list |
-| After creating inbox A | Only inbox A appears in that browser |
+| After creating inbox A | Only inbox A appears |
 | Open in incognito | Empty — different session |
-| Refresh same browser | Inboxes persist (via `localStorage`, key `hiraishinmail_session_id`) |
-| Send email to inbox A | Inbox A gets it instantly (email handler auto-creates inbox record) |
+| Refresh same browser | Inboxes persist via `localStorage` |
+
+## Full Example
+
+```bash
+DOMAIN="mail.yourdomain.com"
+
+# Get session
+SESSION=$(curl -s https://$DOMAIN/api/session | jq -r '.sessionId')
+
+# Create random inbox
+INBOX=$(curl -s -X POST https://$DOMAIN/api/inboxes \
+  -H "x-session-id: $SESSION" \
+  -H "Content-Type: application/json" \
+  -d '{}' | jq -r '.address')
+echo "Created: $INBOX"
+
+# Wait for email to arrive...
+
+# Read messages
+ENCODED=$(echo -n "$INBOX" | jq -sRr '@uri')
+curl -s "https://$DOMAIN/api/inboxes/$ENCODED/messages" \
+  -H "x-session-id: $SESSION" | jq '.'
+
+# Delete inbox (permanent)
+curl -s -X DELETE "https://$DOMAIN/api/inboxes/$ENCODED" \
+  -H "x-session-id: $SESSION"
+```

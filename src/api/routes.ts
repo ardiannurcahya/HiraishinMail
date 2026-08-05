@@ -24,6 +24,34 @@ type HonoContext = Context<{ Bindings: ApiEnv }>;
 
 const LOCAL_PART_RE = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/;
 const MAX_LOCAL_PART_LENGTH = 64;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 10;
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(key);
+  }
+}, 30_000);
 
 function getDomains(env: ApiEnv): string[] {
   return env.MAIL_DOMAIN.split(',').map(d => d.trim()).filter(Boolean);
@@ -78,6 +106,11 @@ api.post('/inboxes', async (c) => {
   const sid = requireSession(c);
   if (!sid) return c.json({ error: 'Missing x-session-id' }, 400);
 
+  const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+  if (!checkRateLimit(clientIp)) {
+    return c.json({ error: 'Rate limit exceeded. Try again later.' }, 429);
+  }
+
   // Reject malformed JSON instead of silently treating it as an empty body
   let body: Record<string, unknown>;
   try {
@@ -108,7 +141,6 @@ api.post('/inboxes', async (c) => {
     }
     address = `${requested}@${domain}`;
   } else {
-    // Note: rate limiting should be added here — random inbox creation is currently unthrottled
     address = await generateUniqueAddress(
       (addr) => inboxExists(c.env.DB, addr),
       domain

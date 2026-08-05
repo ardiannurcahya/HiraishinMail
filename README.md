@@ -1,348 +1,215 @@
-# HiraishinMail — Teleport Your Mail 📮⚡
+<div align="center">
 
-HiraishinMail is a **self-hosted disposable email** service that runs entirely on **Cloudflare Workers** — no VPS required. Inspired by the *Hiraishin no Jutsu* (Flying Thunder God Technique) from Naruto, it **teleports email** from any sender straight to your browser — and just like Minato's seal, it can make mail vanish in an instant. Each disposable address is your own Hiraishin seal: mark it once, and every message sent to it instantly arrives at your edge-powered inbox.
+<img src="https://img.shields.io/badge/Cloudflare%20Workers-F48120?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Cloudflare Workers" />
+<img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+<img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="License" />
 
-It uses Cloudflare Email Workers to receive inbound email, D1 for storage, and serves a clean web UI from the edge.
+# HiraishinMail
 
-> **Repo**: [github.com/ardiannurcahya/hiraishinmail](https://github.com/ardiannurcahya/hiraishinmail)
+**Disposable email service on Cloudflare Workers. No VPS, no Docker, zero cost.**
+
+Self-hosted temporary email that runs entirely on Cloudflare's edge network.
+Receive emails instantly through a clean, Gmail-inspired web interface.
+
+[Getting Started](#getting-started) · [API Reference](API.md) · [Report Bug](https://github.com/ardiannurcahya/HiraishinMail/issues) · [Request Feature](https://github.com/ardiannurcahya/HiraishinMail/issues)
 
 ---
 
-## How it works
+<img src="https://img.shields.io/github/stars/ardiannurcahya/HiraishinMail?style=social" alt="Stars" />
+<img src="https://img.shields.io/github/forks/ardiannurcahya/HiraishinMail?style=social" alt="Forks" />
+
+</div>
+
+---
+
+## Features
+
+- **Zero infrastructure** — runs on Cloudflare Workers, D1, and Email Routing
+- **Instant delivery** — emails appear in your inbox at edge speed
+- **Multiple domains** — configure one or more mail domains
+- **Session-based privacy** — each browser session has isolated inboxes
+- **Human-readable addresses** — generates Indonesian-style random addresses (e.g. `kopihujan42@domain.com`)
+- **Gmail-inspired UI** — dark theme, star/read/select, responsive design
+- **Rate limiting** — built-in protection against inbox spam creation
+- **Free tier friendly** — fits within Cloudflare's free plan limits
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Cloudflare Workers |
+| Router | Hono |
+| Database | Cloudflare D1 (SQLite) |
+| Email parsing | PostalMime |
+| Static hosting | Cloudflare Workers Assets |
+| Language | TypeScript |
+| CLI | Wrangler v4 |
+
+## Architecture
 
 ```
 Sender → Cloudflare MX → Email Worker (email handler)
-                                  │
-                                  ▼
-                          D1 Database (SQLite)
-                                  │
-                                  ▼
-                   Worker HTTP handler → Web UI + API
+                                │
+                                ▼
+                        D1 Database (SQLite)
+                                │
+                                ▼
+                 Worker HTTP handler → Web UI + API
 ```
 
-- **No VPS** — everything runs on Cloudflare's edge
-- **No Postfix** — Cloudflare Email Workers handle SMTP ingestion natively
-- **No Docker** — just `wrangler deploy`
-- **Zero cost** — fits within Cloudflare's free tier
-- **Plug-and-play domain** — bring your own domain, configure it in `wrangler.toml`, done
+## Getting Started
 
----
+### Prerequisites
 
-## Prerequisites
+- [Cloudflare account](https://dash.cloudflare.com/sign-up) (free)
+- A domain added to Cloudflare (nameservers pointed to Cloudflare)
+- [Node.js](https://nodejs.org/) v18+
 
-Before you start, you need:
-
-| Requirement | Details |
-|---|---|
-| **Cloudflare account** | [Sign up here](https://dash.cloudflare.com/sign-up) (free) |
-| **A domain** | Must be added to Cloudflare (nameservers pointed to Cloudflare) |
-| **Node.js** | v18 or later ([download](https://nodejs.org/)) |
-| **npm** | Comes with Node.js |
-
----
-
-## Step 1 — Clone & install dependencies
+### Installation
 
 ```bash
-git clone https://github.com/ardiannurcahya/hiraishinmail.git
-cd hiraishinmail
+git clone https://github.com/ardiannurcahya/HiraishinMail.git
+cd HiraishinMail
 npm install
 ```
 
----
+### Configuration
 
-## Step 2 — Login to Cloudflare
+Login to Cloudflare:
 
 ```bash
 npx wrangler login
 ```
 
-This opens a browser window. Log in with your Cloudflare account and approve the OAuth scopes.
-
-> **What scopes are needed?**
-> Wrangler will request permissions for Workers, D1, Email Routing, Pages, and more. You must approve all of them so the CLI can create the database and deploy the worker.
-
-Verify you're logged in:
-
-```bash
-npx wrangler whoami
-```
-
----
-
-## Step 3 — Configure wrangler.toml (your domain, your seal)
-
-The domain is **plug-and-play** — HiraishinMail doesn't ship with a fixed domain. Open `wrangler.toml` and replace the placeholder values with your own:
-
-```toml
-name = "hiraishinmail"
-main = "src/index.ts"
-compatibility_date = "2025-06-01"
-
-# Set to false when using your own domain (skip workers.dev)
-workers_dev = false
-
-# D1 Database — leave database_id empty for now, we'll fill it in Step 4
-[[d1_databases]]
-binding = "DB"
-database_name = "hiraishinmail-db"
-database_id = ""
-
-# Email Worker
-[email]
-action = "process"
-
-# Custom domain — CHANGE THIS to your own domain
-[[routes]]
-pattern = "hiraishinmail.YOURDOMAIN.com"
-custom_domain = true
-
-# Environment — CHANGE THESE
-[vars]
-APP_NAME = "HiraishinMail"
-MAIL_DOMAIN = "YOURDOMAIN.com"
-WEB_HOST = "hiraishinmail.YOURDOMAIN.com"
-
-# Static assets (don't change)
-[assets]
-directory = "./src/web"
-
-[observability]
-enabled = true
-```
-
-**All three `vars` + the routes `pattern` must be updated:**
-- `YOURDOMAIN.com` → your actual domain (e.g. `example.com`)
-- `hiraishinmail.YOURDOMAIN.com` → the subdomain for the web UI
-
----
-
-## Step 4 — Create the D1 database
+Create the D1 database:
 
 ```bash
 npx wrangler d1 create hiraishinmail-db
 ```
 
-You'll see output like:
+Copy the `database_id` from the output, then update `wrangler.toml`:
 
-```
-✅ Successfully created DB 'hiraishinmail-db'
-
+```toml
 [[d1_databases]]
 binding = "DB"
 database_name = "hiraishinmail-db"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+database_id = "<your-database-id>"   # paste here
+
+[[routes]]
+pattern = "mail.yourdomain.com"      # your Worker subdomain
+custom_domain = true
+
+[vars]
+APP_NAME = "HiraishinMail"
+MAIL_DOMAIN = "yourdomain.com"       # your mail domain
+WEB_HOST = "mail.yourdomain.com"     # your Worker subdomain
 ```
 
-Copy the `database_id` into your `wrangler.toml`.
+### Deploy
 
----
-
-## Step 5 — Apply the database schema
-
-Push the schema to your **remote** D1 database on Cloudflare:
+Push the database schema and deploy the Worker:
 
 ```bash
-npx wrangler d1 execute hiraishinmail-db --remote --file=src/db/schema.sql
+npm run db:migrate
+npm run deploy
 ```
 
-This creates four tables:
-- `inboxes` — email addresses
-- `messages` — received emails
-- `sessions` — browser session tokens
-- `session_inboxes` — which inboxes belong to which session
+### DNS Setup
 
-> **Note:** The `--remote` flag is important — without it, the schema only applies locally. You want it on Cloudflare's servers.
+1. **Web UI** — Cloudflare auto-creates the DNS record for your custom domain
+2. **Email Routing** — verify it's enabled:
+   ```bash
+   npx wrangler email routing settings yourdomain.com
+   ```
+3. **SPF** (recommended) — add a TXT record:
+   | Type | Name | Content |
+   |------|------|---------|
+   | TXT | `@` | `v=spf1 include:_spf.mx.cloudflare.net ~all` |
 
----
+### Verify
 
-## Step 6 — Deploy the Worker
+1. Open `https://mail.yourdomain.com`
+2. Click **New Inbox** → **Random**
+3. Send an email to the generated address
+4. Click **Refresh** — the email appears instantly
 
-```bash
-npx wrangler deploy
-```
+## Usage
 
-This does three things:
-1. Uploads the TypeScript Worker code
-2. Uploads the static frontend files (HTML/CSS/JS) to Cloudflare Assets (edge CDN)
-3. Registers the custom domain route
+### Commands
 
-After a successful deploy, you'll see:
-
-```
-Deployed hiraishinmail triggers
-  hiraishinmail.YOURDOMAIN.com (custom domain)
-```
-
----
-
-## Step 7 — Setup DNS on Cloudflare
-
-### 7a. Web UI (automatic)
-
-Cloudflare automatically creates the DNS record for your Worker's custom domain. If it doesn't:
-
-- Go to **Cloudflare Dashboard → Workers & Pages → hiraishinmail → Settings → Domains**
-- The custom domain `hiraishinmail.YOURDOMAIN.com` should already be listed
-
-### 7b. MX Records (automatic with Email Routing)
-
-Email Routing should already be enabled on your domain. Verify:
-
-```bash
-npx wrangler email routing settings YOURDOMAIN.com
-```
-
-It should show `Enabled: true`. The catch-all rule is also automatically set up — every `*@YOURDOMAIN.com` is routed to the `hiraishinmail` Worker:
-
-```bash
-npx wrangler email routing rules list YOURDOMAIN.com
-```
-
-Expected output:
-```
-Catch-all rule: enabled, action: worker:hiraishinmail
-```
-
-### 7c. SPF Record (optional but recommended)
-
-If you don't already have an SPF record, add one so emails don't get flagged as spam:
-
-| Type | Name | Content |
-|---|---|---|
-| TXT | `@` | `v=spf1 include:_spf.mx.cloudflare.net ~all` |
-
----
-
-## Step 8 — Test it
-
-1. Open `https://hiraishinmail.YOURDOMAIN.com` in your browser
-2. Click **New** → **Random** to create a disposable address
-3. Send an email from Gmail/any provider to that address
-4. Click **Refresh** — the email appears in your inbox, teleported at lightning speed
-
----
-
-## Commands cheat sheet
-
-| Command | What it does |
-|---|---|
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start local development server |
 | `npm run deploy` | Deploy Worker + static assets |
 | `npm run db:migrate` | Apply schema to production D1 |
-| `npm run db:local` | Apply schema to local D1 (for dev) |
-| `npx wrangler dev` | Run Worker locally |
+| `npm run db:migrate:local` | Apply schema to local D1 |
 | `npx wrangler tail` | Stream live logs from production |
-| `npx wrangler d1 execute hiraishinmail-db --remote --command="SELECT * FROM messages LIMIT 10"` | Query the database |
+| `npx wrangler d1 execute hiraishinmail-db --remote --command="SELECT * FROM messages LIMIT 10"` | Query production database |
 
-### Check if emails are being received
+### Multiple Domains
 
-```bash
-npx wrangler d1 execute hiraishinmail-db --remote --command="SELECT * FROM messages ORDER BY received_at DESC LIMIT 5;"
+To support multiple mail domains, set `MAIL_DOMAIN` as a comma-separated list:
+
+```toml
+[vars]
+MAIL_DOMAIN = "domain1.com, domain2.com"
 ```
 
-### Watch live logs
+The first domain is used as the default. Users can select from all available domains when creating an inbox.
 
-```bash
-npx wrangler tail --format pretty
+## API Reference
+
+HiraishinMail exposes a REST API under `/api/`. See [API.md](API.md) for full documentation.
+
+### Quick Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/config` | GET | Public app configuration |
+| `/api/session` | GET | Create or retrieve session |
+| `/api/inboxes` | GET | List session inboxes |
+| `/api/inboxes` | POST | Create new inbox |
+| `/api/inboxes/:address` | DELETE | Delete inbox and all data |
+| `/api/inboxes/:address/messages` | GET | Fetch inbox messages |
+
+## Project Structure
+
 ```
-
-Then send a test email — you'll see the Worker processing it in real time.
-
----
-
-## Project structure
-
-```
-hiraishinmail/
+HiraishinMail/
 ├── wrangler.toml              # Worker config, D1 binding, routes, env vars
 ├── package.json
 ├── tsconfig.json
-├── .gitignore
+├── API.md                     # Full API reference
 └── src/
     ├── index.ts               # Entry point: fetch() + email() handlers
-    ├── email-handler.ts       # Parses inbound email via PostalMime → D1
+    ├── email-handler.ts       # Inbound email processing (PostalMime → D1)
     ├── api/
-    │   └── routes.ts          # Hono router: /api/config, /api/session, /api/inboxes, /api/messages
+    │   └── routes.ts          # Hono router: all /api/* endpoints
     ├── db/
-    │   ├── schema.sql         # D1 tables (inboxes, messages, sessions, session_inboxes)
+    │   ├── schema.sql         # D1 table definitions
     │   └── queries.ts         # Typed query functions
     ├── utils/
     │   └── random-address.ts  # Human-like random email generator
     └── web/
         ├── index.html         # Frontend UI
         ├── app.js             # Frontend logic (vanilla JS)
-        └── styles.css         # Minato-inspired theme (gold/yellow + dark navy)
+        └── styles.css         # Dark theme styles
 ```
 
----
+## Contributing
 
-## Tech stack
-
-| Layer | Tech |
-|---|---|
-| **Runtime** | Cloudflare Workers |
-| **Router** | Hono |
-| **Email parsing** | PostalMime |
-| **Database** | Cloudflare D1 (SQLite) |
-| **Static hosting** | Cloudflare Workers Assets (edge CDN) |
-| **Language** | TypeScript |
-| **CLI** | Wrangler v4 |
-| **Theme** | Minato (gold/yellow + dark navy) |
-
----
-
-## Troubleshooting
-
-### "This site can't be reached / DNS_PROBE_FINISHED_NXDOMAIN"
-
-Your domain's nameservers are not pointed to Cloudflare, or the DNS record hasn't propagated yet. Check:
+Contributions are welcome. Please open an issue first to discuss what you'd like to change.
 
 ```bash
-dig +short YOURDOMAIN.com NS
+# Fork the repo, then:
+git checkout -b feature/your-feature
+npm install
+npx wrangler dev              # test locally
+git commit -m "feat: add your feature"
+git push origin feature/your-feature
+# Open a pull request
 ```
-
-Should show `*.ns.cloudflare.com`. Propagation can take up to 24 hours after changing nameservers.
-
-### Emails not appearing in the web UI
-
-1. The email was received but the inbox hasn't been linked to your browser session. Click **New** → type the exact local-part → click **Create** to claim it.
-2. Check the database:
-   ```bash
-   npx wrangler d1 execute hiraishinmail-db --remote --command="SELECT * FROM messages ORDER BY received_at DESC LIMIT 5;"
-   ```
-3. Check live logs:
-   ```bash
-   npx wrangler tail --format pretty
-   ```
-
-### "Unexpected fields found in top-level field: email"
-
-This is a known wrangler warning — it's cosmetic. The `[email]` config works fine. Cloudflare is still stabilizing the Email Worker integration.
-
-### Wrangler version mismatch
-
-This project uses **Wrangler v4**. If you're on v3:
-
-```bash
-npm install --save-dev wrangler@4
-```
-
-### Can I use any domain?
-
-Yes — the domain is plug-and-play. Point any domain you control at Cloudflare, update `MAIL_DOMAIN`, `WEB_HOST`, and the routes `pattern` in `wrangler.toml`, and redeploy. No code changes needed. You can even run multiple mail domains by extending the allowed domain list.
-
----
 
 ## License
 
-MIT
-
----
-
-<div align="center">
-
-**HiraishinMail — Teleport your mail, Minato-style. 🍥**
-
-Developed by [Ardian Nurcahya](https://github.com/ardiannurcahya)
-
-</div>
+[MIT](LICENSE) — developed by [Ardian Nurcahya](https://github.com/ardiannurcahya)
