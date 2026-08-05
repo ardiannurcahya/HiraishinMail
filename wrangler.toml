@@ -1,0 +1,38 @@
+name = "hiraishinmail"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+
+# Set workers_dev to false when using your own domain
+workers_dev = false
+
+# ---- D1 Database ----
+# Step 1: run `npx wrangler d1 create hiraishinmail-db`
+# Step 2: copy the database_id here
+[[d1_databases]]
+binding = "DB"
+database_name = "hiraishinmail-db"
+database_id = "YOUR_DATABASE_ID"
+
+# ---- Email Worker ----
+[email]
+action = "process"
+
+# ---- Custom domain routes ----
+# Configure your domain here after adding it to Cloudflare
+[[routes]]
+pattern = "hiraishinmail.yourdomain.com"
+custom_domain = true
+
+# ---- Environment variables ----
+[vars]
+APP_NAME = "HiraishinMail"
+MAIL_DOMAIN = "yourdomain.com"
+WEB_HOST = "hiraishinmail.yourdomain.com"
+
+# ---- Static assets (web frontend) ----
+[assets]
+directory = "./src/web"
+
+# ---- Observability ----
+[observability]
+enabled = true
