@@ -1,5 +1,5 @@
 -- HiraishinMail D1 Schema
--- Run: wrangler d1 execute hiraishinmail-db --file=src/db/schema.sql
+-- Run: wrangler d1 execute hiraishinmail-db --remote --file=src/db/schema.sql
 
 CREATE TABLE IF NOT EXISTS inboxes (
   address TEXT PRIMARY KEY,

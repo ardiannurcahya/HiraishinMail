@@ -14,11 +14,6 @@ export interface Message {
   received_at: string;
 }
 
-export interface Session {
-  id: string;
-  created_at: string;
-}
-
 export interface NewMessage {
   inboxAddress: string;
   fromAddress: string;
@@ -92,14 +87,6 @@ export async function insertMessage(db: D1Database, msg: NewMessage): Promise<vo
     .run();
 }
 
-export async function deleteMessagesByInbox(db: D1Database, address: string): Promise<void> {
-  await db.prepare('DELETE FROM messages WHERE inbox_address = ?').bind(address).run();
-}
-
-export async function deleteInbox(db: D1Database, address: string): Promise<void> {
-  await db.prepare('DELETE FROM inboxes WHERE address = ?').bind(address).run();
-}
-
 // ---- Sessions ----
 
 export async function ensureSession(db: D1Database, sessionId: string): Promise<void> {
@@ -117,17 +104,6 @@ export async function linkInboxToSession(
     .prepare(
       'INSERT OR IGNORE INTO session_inboxes (session_id, inbox_address) VALUES (?, ?)'
     )
-    .bind(sessionId, address)
-    .run();
-}
-
-export async function unlinkInboxFromSession(
-  db: D1Database,
-  sessionId: string,
-  address: string
-): Promise<void> {
-  await db
-    .prepare('DELETE FROM session_inboxes WHERE session_id = ? AND inbox_address = ?')
     .bind(sessionId, address)
     .run();
 }

@@ -8,7 +8,6 @@ import {
   getMessages,
   ensureSession,
   linkInboxToSession,
-  unlinkInboxFromSession,
   isInboxInSession,
 } from '../db/queries';
 import { generateUniqueAddress } from '../utils/random-address';
@@ -65,10 +64,6 @@ function sessionId(c: HonoContext): string | null {
   return (c.req.header('x-session-id') ?? '').trim() || null;
 }
 
-function requireSession(c: HonoContext): string | null {
-  return sessionId(c);
-}
-
 const api = new Hono<{ Bindings: ApiEnv }>();
 
 // ---- GET /api/config ----
@@ -94,7 +89,7 @@ api.get('/session', async (c) => {
 
 // ---- GET /api/inboxes ----
 api.get('/inboxes', async (c) => {
-  const sid = requireSession(c);
+  const sid = sessionId(c);
   if (!sid) return c.json({ error: 'Missing x-session-id' }, 400);
 
   const inboxes = await getSessionInboxes(c.env.DB, sid);
@@ -103,7 +98,7 @@ api.get('/inboxes', async (c) => {
 
 // ---- POST /api/inboxes ----
 api.post('/inboxes', async (c) => {
-  const sid = requireSession(c);
+  const sid = sessionId(c);
   if (!sid) return c.json({ error: 'Missing x-session-id' }, 400);
 
   const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
@@ -164,7 +159,7 @@ api.post('/inboxes', async (c) => {
 
 // ---- DELETE /api/inboxes/:address ----
 api.delete('/inboxes/:address', async (c) => {
-  const sid = requireSession(c);
+  const sid = sessionId(c);
   if (!sid) return c.json({ error: 'Missing x-session-id' }, 400);
 
   let address: string;
@@ -174,10 +169,7 @@ api.delete('/inboxes/:address', async (c) => {
     return c.json({ error: 'Invalid address encoding' }, 400);
   }
 
-  // Unlink from this session
-  await unlinkInboxFromSession(c.env.DB, sid, address);
-
-  // Actually delete the data: remove any remaining session links first (FK safety),
+  // Delete all data: remove session links first (FK safety),
   // then messages, then the inbox row itself.
   await c.env.DB.prepare('DELETE FROM session_inboxes WHERE inbox_address = ?').bind(address).run();
   await c.env.DB.prepare('DELETE FROM messages WHERE inbox_address = ?').bind(address).run();
@@ -188,7 +180,7 @@ api.delete('/inboxes/:address', async (c) => {
 
 // ---- GET /api/inboxes/:address/messages ----
 api.get('/inboxes/:address/messages', async (c) => {
-  const sid = requireSession(c);
+  const sid = sessionId(c);
   if (!sid) return c.json({ error: 'Missing x-session-id' }, 400);
 
   let address: string;
