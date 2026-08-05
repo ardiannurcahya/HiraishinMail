@@ -28,7 +28,7 @@ Receive emails instantly through a clean, Gmail-inspired web interface.
 - **Instant delivery** — emails appear in your inbox at edge speed
 - **Multiple domains** — configure one or more mail domains
 - **Session-based privacy** — each browser session has isolated inboxes
-- **Human-readable addresses** — generates Indonesian-style random addresses (e.g. `kopihujan42@domain.com`)
+- **Human-readable addresses** — generates Indonesian-style random addresses (e.g. `hiraishin42@hiraishin.dev`)
 - **Gmail-inspired UI** — dark theme, star/read/select, responsive design
 - **Rate limiting** — built-in protection against inbox spam creation
 - **Free tier friendly** — fits within Cloudflare's free plan limits
@@ -96,13 +96,13 @@ database_name = "hiraishinmail-db"
 database_id = "<your-database-id>"   # paste here
 
 [[routes]]
-pattern = "mail.yourdomain.com"      # your Worker subdomain
+pattern = "mail.hiraishin.dev"       # your Worker subdomain
 custom_domain = true
 
 [vars]
 APP_NAME = "HiraishinMail"
-MAIL_DOMAIN = "yourdomain.com"       # your mail domain
-WEB_HOST = "mail.yourdomain.com"     # your Worker subdomain
+MAIL_DOMAIN = "hiraishin.dev"        # your mail domain
+WEB_HOST = "mail.hiraishin.dev"      # your Worker subdomain
 ```
 
 ### Deploy
@@ -119,7 +119,7 @@ npm run deploy
 1. **Web UI** — Cloudflare auto-creates the DNS record for your custom domain
 2. **Email Routing** — verify it's enabled:
    ```bash
-   npx wrangler email routing settings yourdomain.com
+   npx wrangler email routing settings hiraishin.dev
    ```
 3. **SPF** (recommended) — add a TXT record:
    | Type | Name | Content |
@@ -128,7 +128,7 @@ npm run deploy
 
 ### Verify
 
-1. Open `https://mail.yourdomain.com`
+1. Open `https://mail.hiraishin.dev`
 2. Click **New Inbox** → **Random**
 3. Send an email to the generated address
 4. Click **Refresh** — the email appears instantly

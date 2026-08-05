@@ -25,9 +25,9 @@ Returns public app configuration. No authentication required.
 ```json
 {
   "appName": "HiraishinMail",
-  "mailDomain": "yourdomain.com",
-  "mailDomains": ["yourdomain.com", "mail.yourdomain.com"],
-  "webHost": "mail.yourdomain.com"
+  "mailDomain": "hiraishin.dev",
+  "mailDomains": ["hiraishin.dev", "mail.hiraishin.dev"],
+  "webHost": "mail.hiraishin.dev"
 }
 ```
 
@@ -68,7 +68,7 @@ Lists all inboxes linked to your session.
 ```json
 [
   {
-    "address": "kopihujan23@yourdomain.com",
+    "address": "hiraishin23@hiraishin.dev",
     "created_at": "2026-06-26 07:48:19"
   }
 ]
@@ -106,22 +106,22 @@ Creates a new inbox (or claims an existing one) and links it to your session.
 
 ```bash
 # Custom address
-curl -s -X POST https://mail.yourdomain.com/api/inboxes \
+curl -s -X POST https://mail.hiraishin.dev/api/inboxes \
   -H "x-session-id: <session>" \
   -H "Content-Type: application/json" \
   -d '{"localPart": "myinbox"}'
 
 # Random address
-curl -s -X POST https://mail.yourdomain.com/api/inboxes \
+curl -s -X POST https://mail.hiraishin.dev/api/inboxes \
   -H "x-session-id: <session>" \
   -H "Content-Type: application/json" \
   -d '{}'
 
 # Random on specific domain
-curl -s -X POST https://mail.yourdomain.com/api/inboxes \
+curl -s -X POST https://mail.hiraishin.dev/api/inboxes \
   -H "x-session-id: <session>" \
   -H "Content-Type: application/json" \
-  -d '{"domain": "mail.yourdomain.com"}'
+  -d '{"domain": "mail.hiraishin.dev"}'
 ```
 
 **Response**
@@ -133,7 +133,7 @@ curl -s -X POST https://mail.yourdomain.com/api/inboxes \
 
 ```json
 {
-  "address": "kopihujan42@yourdomain.com",
+    "address": "hiraishin42@hiraishin.dev",
   "created_at": "2026-06-26 07:48:19"
 }
 ```
@@ -164,7 +164,7 @@ curl -s -X POST https://mail.yourdomain.com/api/inboxes \
 
 | Param | Description |
 |-------|-------------|
-| `address` | Full email address, URI-encoded (e.g. `test123%40yourdomain.com`) |
+| `address` | Full email address, URI-encoded (e.g. `test123%40hiraishin.dev`) |
 
 **Response** `200 OK`
 
@@ -202,7 +202,7 @@ Fetches all messages for an inbox. The inbox must be linked to your session.
 [
   {
     "id": "msg_1782461413912_0956a83c",
-    "inbox_address": "test123@yourdomain.com",
+    "inbox_address": "test123@hiraishin.dev",
     "from_address": "someone@gmail.com",
     "subject": "Hello",
     "body": "This is the email body",
@@ -242,7 +242,7 @@ All errors follow this format:
 ## Full Example
 
 ```bash
-DOMAIN="mail.yourdomain.com"
+DOMAIN="mail.hiraishin.dev"
 
 # Get session
 SESSION=$(curl -s https://$DOMAIN/api/session | jq -r '.sessionId')
